@@ -10,8 +10,8 @@ import (
 )
 
 type localRules struct {
-	path  string
-	skip  int
+	path  string // relative to $GOPATH
+	skip  int    // how many lines to skip from the file for pretty printing it
 	rules *ann.Rule
 }
 
@@ -24,12 +24,12 @@ const (
 
 var knownLocalRules = map[lang]localRules{
 	java: localRules{
-		path:  "java.go",
-		skip:  10,
+		path:  "/src/github.com/alcortesm/demo-annotations-doc/java.go",
+		skip:  11,
 		rules: javaRules,
 	},
 	bash: localRules{
-		path:  "bash.go",
+		path:  "/src/github.com/alcortesm/demo-annotations-doc/bash.go",
 		skip:  14,
 		rules: bashRules,
 	},
@@ -65,7 +65,7 @@ func report(l lang) error {
 	desc := fmt.Sprint(a.rules)
 	descSplit := strings.Split(desc, "\n")
 	path := os.Expand(a.path, os.Getenv)
-	raw, err := ioutil.ReadFile(path)
+	raw, err := ioutil.ReadFile(os.Getenv("GOPATH") + path)
 	if err != nil {
 		return err
 	}
