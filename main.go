@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bblfsh/sdk/docgen"
 	"github.com/bblfsh/sdk/uast/ann"
 )
 
@@ -36,8 +37,18 @@ var knownLocalRules = map[lang]localRules{
 }
 
 func main() {
-	l := parseArgs()
-	if err := report(l); err != nil {
+	lang := parseArgs()
+	localRules, ok := knownLocalRules[lang]
+	if !ok {
+		fmt.Fprintln(os.Stderr, "unknown language %s", lang)
+	}
+	/*
+		if err := report(localRules); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+	*/
+	if err := printTable(localRules); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -57,20 +68,16 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "\t%s [java|bash]\n", os.Args[0])
 }
 
-func report(l lang) error {
-	a, ok := knownLocalRules[l]
-	if !ok {
-		return fmt.Errorf("unknown language %s", l)
-	}
-	desc := fmt.Sprint(a.rules)
+func report(lr localRules) error {
+	desc := fmt.Sprint(lr.rules)
 	descSplit := strings.Split(desc, "\n")
-	path := os.Expand(a.path, os.Getenv)
+	path := os.Expand(lr.path, os.Getenv)
 	raw, err := ioutil.ReadFile(os.Getenv("GOPATH") + path)
 	if err != nil {
 		return err
 	}
 	rawSplit := strings.Split(string(raw), "\n")
-	rawSplit = rawSplit[a.skip:]
+	rawSplit = rawSplit[lr.skip:]
 	printSideBySide(rawSplit, descSplit)
 	return nil
 }
@@ -122,4 +129,14 @@ func maxLineLen(a []string) int {
 		}
 	}
 	return m
+}
+
+func printTable(lr localRules) error {
+	asMarkdown := docgen.RulesAsMarkdown(*lr.rules)
+	text, err := asMarkdown.MarshalText()
+	if err != nil {
+		return fmt.Errorf("printTable: %s", err)
+	}
+	fmt.Println(string(text))
+	return nil
 }
