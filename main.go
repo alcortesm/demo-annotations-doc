@@ -25,12 +25,12 @@ const (
 
 var knownLocalRules = map[lang]localRules{
 	java: localRules{
-		path:  "/src/github.com/alcortesm/demo-annotations-doc/java.go",
-		skip:  11,
+		path:  "$GOPATH/src/github.com/alcortesm/demo-annotations-doc/java.go",
+		skip:  10,
 		rules: javaRules,
 	},
 	bash: localRules{
-		path:  "/src/github.com/alcortesm/demo-annotations-doc/bash.go",
+		path:  "$GOPATH/src/github.com/alcortesm/demo-annotations-doc/bash.go",
 		skip:  14,
 		rules: bashRules,
 	},
@@ -38,17 +38,7 @@ var knownLocalRules = map[lang]localRules{
 
 func main() {
 	lang := parseArgs()
-	localRules, ok := knownLocalRules[lang]
-	if !ok {
-		fmt.Fprintln(os.Stderr, "unknown language %s", lang)
-	}
-	/*
-		if err := report(localRules); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-	*/
-	if err := printTable(localRules); err != nil {
+	if err := report(lang); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
@@ -68,75 +58,41 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "\t%s [java|bash]\n", os.Args[0])
 }
 
-func report(lr localRules) error {
-	desc := fmt.Sprint(lr.rules)
-	descSplit := strings.Split(desc, "\n")
-	path := os.Expand(lr.path, os.Getenv)
-	raw, err := ioutil.ReadFile(os.Getenv("GOPATH") + path)
+func report(l lang) error {
+	a, ok := knownLocalRules[l]
+	if !ok {
+		return fmt.Errorf("unknown language %s", l)
+	}
+
+	text, err := original(a)
 	if err != nil {
 		return err
 	}
-	rawSplit := strings.Split(string(raw), "\n")
-	rawSplit = rawSplit[lr.skip:]
-	printSideBySide(rawSplit, descSplit)
+	fmt.Println(text)
+
+	text = doc(a.rules)
+	fmt.Println(text)
+
 	return nil
 }
 
-func printSideBySide(a, b []string) {
-	a = tabsToSpaces(a)
-	b = tabsToSpaces(b)
-
-	maxNLines := len(a)
-	if len(b) > maxNLines {
-		maxNLines = len(b)
-	}
-
-	maxLineLenA := maxLineLen(a)
-	format := fmt.Sprintf("%%-%ds | %%s\n", maxLineLenA)
-
-	var aLine, bLine string
-	for i := 0; i < maxNLines; i++ {
-		if i >= len(a) {
-			aLine = ""
-		} else {
-			aLine = a[i]
-		}
-		if i >= len(b) {
-			bLine = ""
-		} else {
-			bLine = b[i]
-		}
-
-		fmt.Printf(format, aLine, bLine)
-	}
+func doc(r *ann.Rule) string {
+	asMarkdown := (*docgen.RulesAsMarkdown)(r)
+	return asMarkdown.String()
 }
 
-func tabsToSpaces(s []string) []string {
-	ret := make([]string, len(s))
-	for i, l := range s {
-		ret[i] = strings.Replace(l, "\t", "  ", -1)
-	}
-	return ret
-}
-
-func maxLineLen(a []string) int {
-	m := 0
-	var s string
-	for _, l := range a {
-		s = fmt.Sprint("%s", l)
-		if len(s) > m {
-			m = len(s)
-		}
-	}
-	return m
-}
-
-func printTable(lr localRules) error {
-	asMarkdown := docgen.RulesAsMarkdown(*lr.rules)
-	text, err := asMarkdown.MarshalText()
+func original(l localRules) (string, error) {
+	path := os.Expand(l.path, os.Getenv)
+	raw, err := ioutil.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("printTable: %s", err)
+		return "", err
 	}
-	fmt.Println(string(text))
-	return nil
+
+	return tail(string(raw), l.skip), nil
+}
+
+func tail(s string, n int) string {
+	lines := strings.Split(s, "\n")
+	lines = lines[n:]
+	return strings.Join(lines, "\n")
 }
