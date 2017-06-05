@@ -19,8 +19,9 @@ type localRules struct {
 type lang string
 
 const (
-	java lang = "java"
-	bash lang = "bash"
+	java   lang = "java"
+	bash   lang = "bash"
+	simple lang = "simple"
 )
 
 var knownLocalRules = map[lang]localRules{
@@ -33,6 +34,11 @@ var knownLocalRules = map[lang]localRules{
 		path:  "$GOPATH/src/github.com/alcortesm/demo-annotations-doc/bash.go",
 		skip:  14,
 		rules: bashRules,
+	},
+	simple: localRules{
+		path:  "$GOPATH/src/github.com/alcortesm/demo-annotations-doc/simple.go",
+		skip:  14,
+		rules: simpleRules,
 	},
 }
 
@@ -55,7 +61,7 @@ func parseArgs() lang {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "usage:")
-	fmt.Fprintf(os.Stderr, "\t%s [java|bash]\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "\t%s [java|bash|simple]\n", os.Args[0])
 }
 
 func report(l lang) error {
@@ -68,10 +74,13 @@ func report(l lang) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(text)
+	//fmt.Println(text)
 
 	text = doc(a.rules)
-	fmt.Println(text)
+	//fmt.Println(text)
+
+	_ = text
+	experiment(a.rules)
 
 	return nil
 }
@@ -95,4 +104,12 @@ func tail(s string, n int) string {
 	lines := strings.Split(s, "\n")
 	lines = lines[n:]
 	return strings.Join(lines, "\n")
+}
+
+func experiment(r *ann.Rule) {
+	asMarkdown := (*docgen.RulesAsMarkdown)(r)
+	s := asMarkdown.Desc()
+	_ = s
+	fmt.Println("--------------------------")
+	//fmt.Println(s)
 }
